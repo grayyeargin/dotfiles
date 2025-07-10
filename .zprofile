@@ -16,7 +16,7 @@ setopt NO_CASE_GLOB
 setopt APPEND_HISTORY
 
 # Autocorrect typos in path names when using `cd`
-setopt CORRECT
+unsetopt correct_all
 
 # Enable auto-cd (you can type a directory name and it will `cd` into it)
 setopt AUTO_CD
