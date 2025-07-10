@@ -2,16 +2,17 @@
 autoload -Uz colors && colors
 setopt prompt_subst
 
-reset_color="%{$reset_color%}"
+# Reset style with bold off and reset color
+reset_style="%{%f%b%}"
 
-userStyle="%{$bold%}%{$fg[orange]%}"
-[[ $USER == root ]] && userStyle="%{$bold%}%{$fg[red]%}"
+userStyle="%{%B%F{yellow}%}"
+[[ $USER == root ]] && userStyle="%{%B%F{red}%}"
 
-hostStyle="%{$fg[yellow]%}"
-[[ -n "$SSH_TTY" ]] && hostStyle="%{$bold%}%{$fg[red]%}"
+hostStyle="%F{yellow}"
+[[ -n "$SSH_TTY" ]] && hostStyle="%{%B%F{red}%}"
 
-pathStyle="%{$fg[green]%}"
-promptSymbolStyle="%{$fg[red]%}"
+pathStyle="%F{green}"
+promptSymbolStyle="%F{red}"
 
 prompt_git() {
   local s='' branchName=''
@@ -25,14 +26,13 @@ prompt_git() {
     fi
     branchName="$(git symbolic-ref --quiet --short HEAD 2>/dev/null || git rev-parse --short HEAD 2>/dev/null || echo '(unknown)')"
     [[ -n "$s" ]] && s=" [$s]"
-    echo "%{${fg[magenta]}%}on %{${fg[cyan]}%}${branchName}%{${fg[blue]}%}${s}%{${reset_color}%}"
+    echo "%{${fg[magenta]}%}on %{${fg[cyan]}%}${branchName}%{${fg[blue]}%}${s}%{${reset_style}%}"
   fi
 }
 
-PROMPT="${userStyle}%n${reset_color}@${hostStyle}%m${reset_color} ${pathStyle}%~ ${reset_color}\$(prompt_git) ${promptSymbolStyle}%# ${reset_color}"
+PROMPT="${userStyle}%n${reset_style}@${hostStyle}%m${reset_style} ${pathStyle}%~ ${reset_style}\$(prompt_git) ${promptSymbolStyle}%# ${reset_style}"
 
-# Optional: continuation prompt (for multiline commands)
-PS2="%{$fg[yellow]%}→ %{$reset_color%}"
+PS2="%F{yellow}→ %f"
 
 welcome_msg() {
   local white='%F{white}'
