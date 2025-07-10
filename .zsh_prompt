@@ -1,18 +1,20 @@
-# Enable 256-color terminal if available
-if [[ $COLORTERM == gnome-* && $TERM == xterm ]] && infocmp gnome-256color &>/dev/null; then
-  export TERM='gnome-256color'
-elif infocmp xterm-256color &>/dev/null; then
-  export TERM='xterm-256color'
-fi
-
-# Load colors
+# Load colors and options
 autoload -Uz colors && colors
 setopt prompt_subst
 
-# Git branch and state info
+reset_color="%{$reset_color%}"
+
+userStyle="%{$bold%}%{$fg[orange]%}"
+[[ $USER == root ]] && userStyle="%{$bold%}%{$fg[red]%}"
+
+hostStyle="%{$fg[yellow]%}"
+[[ -n "$SSH_TTY" ]] && hostStyle="%{$bold%}%{$fg[red]%}"
+
+pathStyle="%{$fg[green]%}"
+promptSymbolStyle="%{$fg[red]%}"
+
 prompt_git() {
   local s='' branchName=''
-
   if git rev-parse --is-inside-work-tree &>/dev/null; then
     if [[ "$(git rev-parse --is-inside-git-dir 2>/dev/null)" == "false" ]]; then
       git update-index --really-refresh -q &>/dev/null
@@ -21,68 +23,44 @@ prompt_git() {
       [[ -n "$(git ls-files --others --exclude-standard)" ]] && s+='?'
       git rev-parse --verify refs/stash &>/dev/null && s+='$'
     fi
-
-    branchName="$(git symbolic-ref --quiet --short HEAD 2>/dev/null || \
-      git rev-parse --short HEAD 2>/dev/null || echo '(unknown)')"
-
+    branchName="$(git symbolic-ref --quiet --short HEAD 2>/dev/null || git rev-parse --short HEAD 2>/dev/null || echo '(unknown)')"
     [[ -n "$s" ]] && s=" [$s]"
-    echo "${fg[white]} on ${fg[violet]}${branchName}${fg[blue]}${s}${reset_color}"
+    echo "%{${fg[magenta]}%}on %{${fg[cyan]}%}${branchName}%{${fg[blue]}%}${s}%{${reset_color}%}"
   fi
 }
 
-# Prompt appearance
-userStyle="%{$bold%}%{$fg[orange]%}"
-[[ $USER == root ]] && userStyle="%{$bold%}%{$fg[red]%}"
+PROMPT="${userStyle}%n${reset_color}@${hostStyle}%m${reset_color} ${pathStyle}%~ ${reset_color}\$(prompt_git) ${promptSymbolStyle}%# ${reset_color}"
 
-hostStyle="%{$fg[yellow]%}"
-[[ -n "$SSH_TTY" ]] && hostStyle="%{$bold%}%{$fg[red]%}"
-
-# Build the prompt
-PROMPT=$'%{\e]0;%~\a%}'  # Terminal title
-PROMPT+=$'\n'"${userStyle}%n"               # User
-PROMPT+="${reset_color}%{$fg[white]%} at ${hostStyle}%m"  # Host
-PROMPT+="${reset_color}%{$fg[white]%} in %{$fg[green]%}%~"  # Path
-PROMPT+='$(prompt_git)'                     # Git info
-PROMPT+=$'\n'"%{$fg[white]%}$ %{$reset_color%}"            # Newline and prompt
-
-
-PS2="${fg[yellow]}→ ${reset_color}"
-
-# ---------------------------------------------------------------------------
-# Welcome Prompt on load
-# ---------------------------------------------------------------------------
-WELCOME_PROMPT=true
+# Optional: continuation prompt (for multiline commands)
+PS2="%{$fg[yellow]%}→ %{$reset_color%}"
 
 welcome_msg() {
-  # Define ANSI colors for fg/bg
-  local white='\033[1;37m'
-  local bg_cyan='\033[46m'
-  local bg_violet='\033[45m'
-  local bg_orange='\033[43m'
-  local reset='\033[0m'
+  local white='%F{white}'
+  local bg_cyan='%K{cyan}'
+  local bg_violet='%K{magenta}'
+  local bg_orange='%K{yellow}'
+  local reset='%k%f'
 
-  echo -e "${white}${bg_cyan}  GRAY  ${reset}${white}${bg_violet}  YEARGIN  ${reset}${white}${bg_orange}  Brooklyn, NY  ${reset}"
-  echo "------------------------------------------"
-  command -v git &>/dev/null && echo "$(git --version)"
-  command -v brew &>/dev/null && echo "$(brew -v | head -n1)"
-  command -v node &>/dev/null && echo -e "${white}${bg_cyan}  NODE $(node --version)  ${reset}"
-  command -v npm &>/dev/null && echo -e "${white}${bg_violet}  NPM $(npm --version)  ${reset}"
-  echo "------------------------------------------"
-  echo "type ${bold}unwelcome${reset} to remove this message"
+  print -P "${white}${bg_cyan}  GRAY  ${reset}${white}${bg_violet}  YEARGIN  ${reset}${white}${bg_orange}  Brooklyn, NY  ${reset}"
+  print "------------------------------------------"
+  command -v git &>/dev/null && print "Git: $(git --version)"
+  command -v brew &>/dev/null && print "Brew: $(brew -v | head -n1)"
+  command -v node &>/dev/null && print -P "${white}${bg_cyan}  NODE $(node --version)  ${reset}"
+  command -v npm &>/dev/null && print -P "${white}${bg_violet}  NPM $(npm --version)  ${reset}"
+  print "------------------------------------------"
+  print "Type ${bold}unwelcome${reset} to remove this message"
 }
 
-
-if [[ "$WELCOME_PROMPT" == true ]]; then
+if [[ -f ~/.welcome_message_enabled ]]; then
   welcome_msg
 fi
 
-# Toggle welcome message
 welcome() {
-  sed -i.bak 's/WELCOME_PROMPT=false/WELCOME_PROMPT=true/' ~/.zsh_prompt
+  touch ~/.welcome_message_enabled
   echo "Message returned."
 }
 
 unwelcome() {
-  sed -i.bak 's/WELCOME_PROMPT=true/WELCOME_PROMPT=false/' ~/.zsh_prompt
-  echo "Message removed. Type ${bold}welcome${reset_color} to return the message."
+  rm -f ~/.welcome_message_enabled
+  echo "Message removed."
 }
