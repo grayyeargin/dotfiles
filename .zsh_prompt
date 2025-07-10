@@ -1,0 +1,88 @@
+# Enable 256-color terminal if available
+if [[ $COLORTERM == gnome-* && $TERM == xterm ]] && infocmp gnome-256color &>/dev/null; then
+  export TERM='gnome-256color'
+elif infocmp xterm-256color &>/dev/null; then
+  export TERM='xterm-256color'
+fi
+
+# Load colors
+autoload -Uz colors && colors
+setopt prompt_subst
+
+# Git branch and state info
+prompt_git() {
+  local s='' branchName=''
+
+  if git rev-parse --is-inside-work-tree &>/dev/null; then
+    if [[ "$(git rev-parse --is-inside-git-dir 2>/dev/null)" == "false" ]]; then
+      git update-index --really-refresh -q &>/dev/null
+      ! git diff --quiet --ignore-submodules --cached && s+='+'
+      ! git diff-files --quiet --ignore-submodules -- && s+='!'
+      [[ -n "$(git ls-files --others --exclude-standard)" ]] && s+='?'
+      git rev-parse --verify refs/stash &>/dev/null && s+='$'
+    fi
+
+    branchName="$(git symbolic-ref --quiet --short HEAD 2>/dev/null || \
+      git rev-parse --short HEAD 2>/dev/null || echo '(unknown)')"
+
+    [[ -n "$s" ]] && s=" [$s]"
+    echo "${fg[white]} on ${fg[violet]}${branchName}${fg[blue]}${s}${reset_color}"
+  fi
+}
+
+# Prompt appearance
+userStyle="%{$bold%}%{$fg[orange]%}"
+[[ $USER == root ]] && userStyle="%{$bold%}%{$fg[red]%}"
+
+hostStyle="%{$fg[yellow]%}"
+[[ -n "$SSH_TTY" ]] && hostStyle="%{$bold%}%{$fg[red]%}"
+
+# Build the prompt
+PROMPT=$'%{\e]0;%~\a%}'  # Terminal title
+PROMPT+=$'\n'"${userStyle}%n"               # User
+PROMPT+="${reset_color}%{$fg[white]%} at ${hostStyle}%m"  # Host
+PROMPT+="${reset_color}%{$fg[white]%} in %{$fg[green]%}%~"  # Path
+PROMPT+='$(prompt_git)'                     # Git info
+PROMPT+=$'\n'"%{$fg[white]%}$ %{$reset_color%}"            # Newline and prompt
+
+
+PS2="${fg[yellow]}→ ${reset_color}"
+
+# ---------------------------------------------------------------------------
+# Welcome Prompt on load
+# ---------------------------------------------------------------------------
+WELCOME_PROMPT=true
+
+welcome_msg() {
+  # Define ANSI colors for fg/bg
+  local white='\033[1;37m'
+  local bg_cyan='\033[46m'
+  local bg_violet='\033[45m'
+  local bg_orange='\033[43m'
+  local reset='\033[0m'
+
+  echo -e "${white}${bg_cyan}  GRAY  ${reset}${white}${bg_violet}  YEARGIN  ${reset}${white}${bg_orange}  Brooklyn, NY  ${reset}"
+  echo "------------------------------------------"
+  command -v git &>/dev/null && echo "$(git --version)"
+  command -v brew &>/dev/null && echo "$(brew -v | head -n1)"
+  command -v node &>/dev/null && echo -e "${white}${bg_cyan}  NODE $(node --version)  ${reset}"
+  command -v npm &>/dev/null && echo -e "${white}${bg_violet}  NPM $(npm --version)  ${reset}"
+  echo "------------------------------------------"
+  echo "type ${bold}unwelcome${reset} to remove this message"
+}
+
+
+if [[ "$WELCOME_PROMPT" == true ]]; then
+  welcome_msg
+fi
+
+# Toggle welcome message
+welcome() {
+  sed -i.bak 's/WELCOME_PROMPT=false/WELCOME_PROMPT=true/' ~/.zsh_prompt
+  echo "Message returned."
+}
+
+unwelcome() {
+  sed -i.bak 's/WELCOME_PROMPT=true/WELCOME_PROMPT=false/' ~/.zsh_prompt
+  echo "Message removed. Type ${bold}welcome${reset_color} to return the message."
+}
